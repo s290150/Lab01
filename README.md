@@ -10,4 +10,4 @@ In the unfolded_FIR repository there are all files related to the unfolded and p
   In the zipped one there are all the files related to matlab, c, synopsys, innovus, that can be usefull for the comprehension of the project.
 
 
-Due to the GitHub's limit of space, all other files, including report for power, timing and area, are located in the zipped directories.
+Due to the GitHub's limit of space, all other files, including report for power, timing and area, are located in the zipped directories in SYN folders for both the type of filters.
