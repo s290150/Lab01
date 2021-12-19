@@ -1,0 +1,109 @@
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_signed.ALL;
+USE work.types_pkg.ALL;
+
+ENTITY BEU IS
+	PORT(
+			A : IN STD_LOGIC_VECTOR(PARALLELISM-1 DOWNTO 0);
+			B : IN STD_LOGIC_VECTOR(PARALLELISM-1 DOWNTO 0);
+			Q : OUT PP;
+			PROD_SIGN : OUT STD_LOGIC_VECTOR(N_PARTIAL_PRODUCT-2 DOWNTO 0)
+			);
+END ENTITY;
+
+ARCHITECTURE BEHAV OF BEU IS
+
+SIGNAL COND_1, COND_2, COND_3 : STD_LOGIC_VECTOR(16 DOWNTO 0);
+SIGNAL Q_INT : PP;
+
+BEGIN
+
+-- FIRST ITERATION
+
+		COND_1(0) <= ((NOT(B(0) XOR '0')) AND (NOT(B(1) XOR B(0))));
+		COND_2(0) <= B(0) XOR '0';
+		COND_3(0) <= ((NOT(B(0) XOR '0')) AND (B(1) XOR B(0)));
+		
+		MUXS_IN : PROCESS(COND_1(0), COND_2(0), COND_3(0), A, B)
+		BEGIN
+		
+			IF (COND_1(0) = '1') THEN
+					Q_INT(0) <= "000000000000000000000000000000000";
+			ELSIF (COND_2(0) = '1') THEN
+					Q_INT(0) <= A(31) & A;
+			ELSIF (COND_3(0) = '1') THEN
+					Q_INT(0) <= A & '0';
+			ELSE
+					Q_INT(0) <= "000000000000000000000000000000000";
+			END IF;
+			
+		END PROCESS;
+		
+		EXOR_FIRST_EXPLOITATION : FOR K IN 0 TO PARALLELISM GENERATE
+
+				Q(0)(K) <= Q_INT(0)(K) XOR B(1);
+
+			END GENERATE;
+			
+		PROD_SIGN(0) <= B(1);
+
+	MUXs_INT : FOR I IN 1 TO 15 GENERATE
+					
+							COND_1(I) <= ((NOT(B(I*2) XOR B(I*2-1))) AND (NOT(B(I*2+1) XOR B(I*2))));
+							COND_2(I) <= B(I*2) XOR B(I*2-1);
+							COND_3(I) <= ((NOT(B(I*2) XOR B(I*2-1))) AND (B(I*2+1) XOR B(I*2)));
+							
+							MUXS_INTERM : PROCESS(COND_1(I), COND_2(I), COND_3(I), A, B)
+							BEGIN
+
+								IF (COND_1(I) = '1') THEN
+										Q_INT(I) <= "000000000000000000000000000000000";
+								ELSIF (COND_2(I) = '1') THEN
+										Q_INT(I) <= A(31) & A;
+								ELSIF (COND_3(I) = '1') THEN
+										Q_INT(I) <= A & '0';
+								ELSE
+										Q_INT(I) <= "000000000000000000000000000000000";
+								END IF;
+								
+							END PROCESS;
+							
+							EXOR_INNER_EXPLOITATION : FOR K IN 0 TO PARALLELISM GENERATE
+	
+																Q(I)(K) <= Q_INT(I)(K) XOR B(I*2+1);
+	
+                            						END GENERATE;
+															
+							PROD_SIGN(I) <= B(I*2+1);
+														
+					END GENERATE;
+	
+-- LAST ITERATION
+
+		COND_1(16) <= ((NOT('0' XOR B(31))) AND (NOT('0' XOR '0')));
+		COND_2(16) <= '0' XOR B(31);
+		COND_3(16) <= ((NOT('0' XOR B(31))) AND ('0' XOR '0'));
+		
+		MUXS_LAST : PROCESS(COND_1(16), COND_2(16), COND_3(16), A, B)
+		BEGIN
+
+			IF (COND_1(16) = '1') THEN
+					Q_INT(16) <= (OTHERS => '0');
+			ELSIF (COND_2(16) = '1') THEN
+					Q_INT(16) <= A(31) & A;
+			ELSIF (COND_3(16) = '1') THEN
+					Q_INT(16) <= A & '0';
+			ELSE
+					Q_INT(16) <= "000000000000000000000000000000000";
+			END IF;
+					 
+		END PROCESS;
+		
+		EXOR_LAST_EXPLOITATION : FOR K IN 0 TO PARALLELISM GENERATE
+
+			Q(16)(K) <= Q_INT(16)(K) XOR '0';
+
+		END GENERATE;
+
+END BEHAV;
